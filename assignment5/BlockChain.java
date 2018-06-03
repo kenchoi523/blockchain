@@ -41,11 +41,32 @@ public class BlockChain {
         }
     }
 
+    public class BlockWrapper {
+        public Block block;
+        public int height;
+        public UTXOPool utxo_pool;
+
+        public BlockWrapper(Block block, int height, UTXOPool pool) {
+            this.block = block;
+            this.height = height;
+            this.utxo_pool = pool;
+	}
+
+        public UTXOPool getUTXOPoolCopy() {
+            return new UTXOPool(utxo_pool);
+        }
+    }
+
+    private HashMap<ByteArrayWrapper, BlockWrapper> hash_to_block_;
+    private BlockWrapper max_height_block_wrapper_;
+    private TransactionPool tx_pool_;
+
     /**
      * create an empty block chain with just a genesis block. Assume {@code genesisBlock} is a valid
      * block
      */
     public BlockChain(Block genesisBlock) {
+<<<<<<< HEAD
         this.blockChain = new HashMap<>();
         UTXOPool utxoPool = new UTXOPool();
         // add outputs of genesisBlock into the global UTXOPool
@@ -61,21 +82,48 @@ public class BlockChain {
         
         this.maxHeightBlockNode = genesisBlockNode;
         this.oldestBlockHeight = 1;
+=======
+        hash_to_block_ = new HashMap<ByteArrayWrapper, BlockWrapper>();
+        tx_pool_ = new TransactionPool();
+
+        Transaction genesis_coinbase_tx = genesisBlock.getCoinbase();
+        UTXO u = new UTXO(genesis_coinbase_tx.getHash(), 0);
+        UTXOPool pool = new UTXOPool();
+        pool.addUTXO(u, genesis_coinbase_tx.getOutput(0));
+
+        ByteArrayWrapper key = new ByteArrayWrapper(genesisBlock.getHash());
+        BlockWrapper value = new BlockWrapper(genesisBlock, 1, pool);
+        hash_to_block_.put(key, value);
+        max_height_block_wrapper_ = value;
+
+>>>>>>> b53ebae13ef0bfbd6dd0db4d08b2627b5a4df65f
     }
 
     /** Get the maximum height block */
     public Block getMaxHeightBlock() {
+<<<<<<< HEAD
         return maxHeightBlockNode.block;
+=======
+        return max_height_block_wrapper_.height;
+>>>>>>> b53ebae13ef0bfbd6dd0db4d08b2627b5a4df65f
     }
 
     /** Get the UTXOPool for mining a new block on top of max height block */
     public UTXOPool getMaxHeightUTXOPool() {
+<<<<<<< HEAD
         return maxHeightBlockNode.utxoPool;
+=======
+        return max_height_block_wrapper_.getUTXOPoolCopy();
+>>>>>>> b53ebae13ef0bfbd6dd0db4d08b2627b5a4df65f
     }
 
     /** Get the transaction pool to mine a new block */
     public TransactionPool getTransactionPool() {
+<<<<<<< HEAD
         return txPool;
+=======
+        return tx_pool_;
+>>>>>>> b53ebae13ef0bfbd6dd0db4d08b2627b5a4df65f
     }
 
     /**
@@ -91,6 +139,7 @@ public class BlockChain {
      * @return true if block is successfully added
      */
     public boolean addBlock(Block block) {
+<<<<<<< HEAD
         // a null block should not be added
         if (block == null) {
             return false;
@@ -160,10 +209,52 @@ public class BlockChain {
         }
         
         return true;
+=======
+        if (block.getPrevBlockHash() == null) 
+	    return false;
+
+        ByteArrayWrapper parent_hash = new ByteArrayWrapper(block.getPrevBlockHash());
+        BlockWrapper parent_wrapper = hash_to_block_.get(parent_hash);
+        if (parent_wrapper == null)
+      	    return false;
+
+    	int proposed_height = parent_wrapper.height + 1;
+    	if (proposed_height < getMaxHeight() - CUT_OFF_AGE + 1)
+      	    return false;
+
+    	UTXOPool parent_pool = parent_wrapper.utxo_pool;
+    	TxHandler tx_handler = new TxHandler(parent_pool);
+    	Transaction[] block_txs = block.getTransactions().toArray(new Transaction[0]);
+    	Transaction[] handled_txs = tx_handler.handleTxs(block_txs);
+    	if (block_txs.length != handled_txs.length)
+      	    return false;
+
+    	UTXOPool block_pool = tx_handler.getUTXOPool();
+    	Transaction block_coinbase_tx = block.getCoinbase();
+    	block_pool.addUTXO(new UTXO(block_coinbase_tx.getHash(), 0),
+            block_coinbase_tx.getOutput(0));
+    	for (Transaction tx : block_txs) {
+      	    tx_pool_.removeTransaction(tx.getHash());
+    	}
+
+    	BlockWrapper added_block_wrapper =
+      	    new BlockWrapper(block, proposed_height, block_pool);
+    	hash_to_block_.put(new ByteArrayWrapper(block.getHash()),
+            added_block_wrapper);
+
+    	if (proposed_height > getMaxHeight())
+      	    max_height_block_wrapper_ = added_block_wrapper;
+
+    	return true;
+>>>>>>> b53ebae13ef0bfbd6dd0db4d08b2627b5a4df65f
     }
 
     /** Add a transaction to the transaction pool */
     public void addTransaction(Transaction tx) {
+<<<<<<< HEAD
         this.txPool.addTransaction(tx);
+=======
+        tx_pool_.addTransaction(tx);
+>>>>>>> b53ebae13ef0bfbd6dd0db4d08b2627b5a4df65f
     }
 }
